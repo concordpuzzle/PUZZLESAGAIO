@@ -35,52 +35,49 @@
         }
 
         .sudoku-grid {
-            width: 90%;
-            max-width: 600px;
-            margin: 0 auto;
             display: grid;
             grid-template-columns: repeat(9, 1fr);
             gap: 1px;
+            width: 90%;
+            max-width: 540px;
+            margin: 0 auto;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
         }
-        
+
         .sudoku-cell {
             width: 100%;
             aspect-ratio: 1;
-            font-size: 20px;
+            font-size: 18px;
             text-align: center;
-            border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
             padding: 0;
         }
 
-        /* Style for the number input spinners */
         .sudoku-cell::-webkit-inner-spin-button {
             opacity: 1;
-            background: rgba(255,255,255,0.15);  /* Slightly darker than the cell background */
+            background: rgba(255, 255, 255, 0.15);
             height: 100%;
             position: absolute;
             right: 0;
             top: 0;
-            width: 20px;
+            width: 16px;
         }
 
-        .sudoku-cell:focus {
-            background: rgba(255,255,255,0.2);
-            outline: none;
+        .border-right-thick {
+            border-right: 2px solid white !important;
         }
 
-        .sudoku-cell.preset {
-            background: rgba(255,255,255,0.15);
+        .border-bottom-thick {
+            border-bottom: 2px solid white !important;
+        }
+
+        .preset {
+            background: rgba(255, 255, 255, 0.15);
             font-weight: bold;
-        }
-
-        .border-right {
-            border-right: 2px solid white;
-        }
-
-        .border-bottom {
-            border-bottom: 2px solid white;
         }
 
         .error-message {
@@ -93,23 +90,13 @@
             text-align: center;
             display: none;
         }
-
-        /* Add stronger borders for 3x3 boxes */
-        .border-right-thick {
-            border-right: 2px solid white !important;
-        }
-
-        .border-bottom-thick {
-            border-bottom: 2px solid white !important;
-        }
     </style>
 </head>
-<body class="min-h-screen p-8">
+<body class="min-h-screen p-4">
     <div class="max-w-4xl mx-auto">
         <h1 class="title">Concord Puzzle</h1>
         <h2 class="subtitle">9x9 Sudoku</h2>
 
-        <!-- Add error message container -->
         <div id="errorMessage" class="error-message"></div>
 
         <!-- Timer and Score -->
@@ -123,35 +110,22 @@
         </div>
 
         <!-- Sudoku Grid -->
-        <div class="flex justify-center mb-8">
-            <div id="sudokuGrid" class="sudoku-grid grid grid-cols-9 gap-0 p-2 bg-white/10 rounded">
-                <!-- Grid will be populated by JavaScript -->
-            </div>
-        </div>
+        <div id="sudokuGrid" class="sudoku-grid"></div>
 
         <!-- Submit Button -->
-        <div class="text-center mb-12">
+        <div class="text-center mt-8">
             <button onclick="submitSolution()" 
-                    class="bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded text-xl transition-colors">
-                Submit Solution
+                    class="bg-white/20 hover:bg-white/30 text-white font-bold py-2 px-8 rounded">
+                Submit
             </button>
         </div>
 
         <!-- Leaderboard -->
         <div class="mt-8">
-            <h2 class="text-2xl mb-4 text-center title">Leaderboard</h2>
-            <table class="w-full">
-                <thead>
-                    <tr>
-                        <th class="py-2 text-left">#</th>
-                        <th class="py-2 text-left">Player</th>
-                        <th class="py-2 text-right">Streak</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboardBody">
-                    <!-- Leaderboard rows will be inserted here -->
-                </tbody>
-            </table>
+            <h3 class="text-xl font-bold mb-4 text-center">Leaderboard</h3>
+            <div id="leaderboard" class="bg-white/10 rounded p-4">
+                <!-- Leaderboard will be populated by JavaScript -->
+            </div>
         </div>
     </div>
 
@@ -164,7 +138,6 @@
         function createSudokuGrid(puzzle) {
             const grid = document.getElementById('sudokuGrid');
             grid.innerHTML = '';
-            grid.className = 'sudoku-grid grid grid-cols-9 gap-0 p-2 bg-white/10 rounded';
 
             for (let i = 0; i < 9; i++) {
                 for (let j = 0; j < 9; j++) {
@@ -186,7 +159,7 @@
                         input.readOnly = true;
                         input.classList.add('preset');
                     }
-                    
+
                     input.addEventListener('input', function() {
                         if (this.value > 9) this.value = 9;
                         if (this.value < 0) this.value = 0;
