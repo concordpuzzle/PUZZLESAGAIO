@@ -12,40 +12,50 @@ class PuzzleController extends Controller
 {
     private function generateNewPuzzle()
     {
-        Log::info('Generating new 4x4 Sudoku puzzle');
+        Log::info('Generating new 9x9 Sudoku puzzle');
         
         $result = OpenAI::chat()->create([
             'model' => 'gpt-3.5-turbo',
             'messages' => [
                 [
                     'role' => 'system',
-                    'content' => 'You are a 4x4 Sudoku puzzle generator. Generate puzzles where:
-                    - Each row must contain digits 1-4
-                    - Each column must contain digits 1-4
-                    - Each 2x2 box must contain digits 1-4
+                    'content' => 'You are a 9x9 Sudoku puzzle generator. Generate puzzles where:
+                    - Each row must contain digits 1-9
+                    - Each column must contain digits 1-9
+                    - Each 3x3 box must contain digits 1-9
                     - Puzzle must have a unique solution
-                    - Include at least one starting number in each 2x2 box
-                    - Include 8-10 starting numbers total
+                    - Include at least three numbers in each 3x3 box
+                    - Include 30-35 starting numbers total
                     - Ensure the puzzle is solvable with basic Sudoku strategies'
                 ],
                 [
                     'role' => 'user',
-                    'content' => 'Generate a 4x4 Sudoku puzzle. Respond ONLY with JSON in this format: 
+                    'content' => 'Generate a 9x9 Sudoku puzzle. Respond ONLY with JSON in this format: 
                     {
                         "puzzle": [
-                            [1,0,4,0],
-                            [0,3,0,2],
-                            [2,0,3,0],
-                            [0,1,0,4]
+                            [5,3,0,0,7,0,0,0,0],
+                            [6,0,0,1,9,5,0,0,0],
+                            [0,9,8,0,0,0,0,6,0],
+                            [8,0,0,0,6,0,0,0,3],
+                            [4,0,0,8,0,3,0,0,1],
+                            [7,0,0,0,2,0,0,0,6],
+                            [0,6,0,0,0,0,2,8,0],
+                            [0,0,0,4,1,9,0,0,5],
+                            [0,0,0,0,8,0,0,7,9]
                         ],
                         "solution": [
-                            [1,2,4,3],
-                            [4,3,1,2],
-                            [2,4,3,1],
-                            [3,1,2,4]
+                            [5,3,4,6,7,8,9,1,2],
+                            [6,7,2,1,9,5,3,4,8],
+                            [1,9,8,3,4,2,5,6,7],
+                            [8,5,9,7,6,1,4,2,3],
+                            [4,2,6,8,5,3,7,9,1],
+                            [7,1,3,9,2,4,8,5,6],
+                            [9,6,1,5,3,7,2,8,4],
+                            [2,8,7,4,1,9,6,3,5],
+                            [3,4,5,2,8,6,1,7,9]
                         ]
                     }
-                    Use 0 for empty cells in the puzzle. Ensure each 2x2 box has at least one starting number.'
+                    Use 0 for empty cells in the puzzle.'
                 ]
             ],
             'temperature' => 0.7,
@@ -53,49 +63,41 @@ class PuzzleController extends Controller
         ]);
 
         try {
-            Log::info('OpenAI response:', ['response' => $result]);
             $content = $result->choices[0]->message->content;
             $data = json_decode($content, true);
             
             if (!$data || !isset($data['puzzle']) || !isset($data['solution'])) {
-                Log::error('Invalid puzzle format from OpenAI:', ['content' => $content]);
                 throw new \Exception('Invalid puzzle format received');
             }
             
-            // Validate that each 2x2 box has at least one number
-            $boxes = [
-                [0,0], [0,2],
-                [2,0], [2,2]
-            ];
-            
-            foreach ($boxes as $box) {
-                $hasNumber = false;
-                for ($i = 0; $i < 2; $i++) {
-                    for ($j = 0; $j < 2; $j++) {
-                        if ($data['puzzle'][$box[0] + $i][$box[1] + $j] !== 0) {
-                            $hasNumber = true;
-                            break 2;
+            // Validate that each 3x3 box has at least three numbers
+            for ($boxRow = 0; $boxRow < 3; $boxRow++) {
+                for ($boxCol = 0; $boxCol < 3; $boxCol++) {
+                    $count = 0;
+                    for ($i = 0; $i < 3; $i++) {
+                        for ($j = 0; $j < 3; $j++) {
+                            if ($data['puzzle'][$boxRow * 3 + $i][$boxCol * 3 + $j] !== 0) {
+                                $count++;
+                            }
                         }
                     }
-                }
-                if (!$hasNumber) {
-                    Log::error('Invalid puzzle: missing number in 2x2 box', ['box' => $box]);
-                    throw new \Exception('Invalid puzzle: missing number in 2x2 box');
+                    if ($count < 3) {
+                        throw new \Exception('Invalid puzzle: not enough numbers in 3x3 box');
+                    }
                 }
             }
             
             // Count total starting numbers
             $startingNumbers = 0;
-            for ($i = 0; $i < 4; $i++) {
-                for ($j = 0; $j < 4; $j++) {
+            for ($i = 0; $i < 9; $i++) {
+                for ($j = 0; $j < 9; $j++) {
                     if ($data['puzzle'][$i][$j] !== 0) {
                         $startingNumbers++;
                     }
                 }
             }
             
-            if ($startingNumbers < 8) {
-                Log::error('Invalid puzzle: not enough starting numbers', ['count' => $startingNumbers]);
+            if ($startingNumbers < 30) {
                 throw new \Exception('Invalid puzzle: not enough starting numbers');
             }
             
@@ -237,8 +239,8 @@ class PuzzleController extends Controller
             return false;
         }
 
-        for ($i = 0; $i < 4; $i++) {
-            for ($j = 0; $j < 4; $j++) {
+        for ($i = 0; $i < 9; $i++) {
+            for ($j = 0; $j < 9; $j++) {
                 if (!isset($submitted[$i][$j]) || !isset($correct[$i][$j])) {
                     Log::error("Missing value at position [$i][$j]");
                     return false;

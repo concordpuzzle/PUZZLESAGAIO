@@ -36,14 +36,14 @@
 
         .sudoku-grid {
             width: 90%;
-            max-width: 400px;
+            max-width: 600px;
             margin: 0 auto;
         }
         
         .sudoku-cell {
             width: 100%;
             aspect-ratio: 1;
-            font-size: 24px;
+            font-size: 20px;
             text-align: center;
             border: 1px solid rgba(255,255,255,0.3);
             background: rgba(255,255,255,0.1);
@@ -89,12 +89,21 @@
             text-align: center;
             display: none;
         }
+
+        /* Add stronger borders for 3x3 boxes */
+        .border-right-thick {
+            border-right: 2px solid white;
+        }
+
+        .border-bottom-thick {
+            border-bottom: 2px solid white;
+        }
     </style>
 </head>
 <body class="min-h-screen p-8">
     <div class="max-w-4xl mx-auto">
         <h1 class="title">Concord Puzzle</h1>
-        <h2 class="subtitle">4x4 Sudoku</h2>
+        <h2 class="subtitle">9x9 Sudoku</h2>
 
         <!-- Add error message container -->
         <div id="errorMessage" class="error-message"></div>
@@ -111,7 +120,7 @@
 
         <!-- Sudoku Grid -->
         <div class="flex justify-center mb-8">
-            <div id="sudokuGrid" class="sudoku-grid grid grid-cols-4 gap-0 p-2 bg-white/10 rounded">
+            <div id="sudokuGrid" class="sudoku-grid grid grid-cols-9 gap-0 p-2 bg-white/10 rounded">
                 <!-- Grid will be populated by JavaScript -->
             </div>
         </div>
@@ -151,18 +160,15 @@
         function createSudokuGrid(puzzle) {
             const grid = document.getElementById('sudokuGrid');
             grid.innerHTML = '';
-            
-            for (let i = 0; i < 4; i++) {
-                for (let j = 0; j < 4; j++) {
+            grid.className = 'sudoku-grid grid grid-cols-9 gap-0 p-2 bg-white/10 rounded';
+
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
                     const input = document.createElement('input');
                     input.type = 'number';
                     input.min = 1;
-                    input.max = 4;
-                    input.classList.add('sudoku-cell');
-                    
-                    // Add borders for 2x2 boxes
-                    if (j === 1) input.classList.add('border-right');
-                    if (i === 1) input.classList.add('border-bottom');
+                    input.max = 9;
+                    input.className = `sudoku-cell ${j === 2 || j === 5 ? 'border-right-thick' : ''} ${i === 2 || i === 5 ? 'border-bottom-thick' : ''}`;
                     
                     if (puzzle[i][j] !== 0) {
                         input.value = puzzle[i][j];
@@ -170,10 +176,9 @@
                         input.classList.add('preset');
                     }
                     
-                    // Prevent invalid input
                     input.addEventListener('input', function() {
-                        if (this.value > 4) this.value = 4;
-                        if (this.value < 1) this.value = '';
+                        if (this.value > 9) this.value = 9;
+                        if (this.value < 0) this.value = 0;
                     });
 
                     grid.appendChild(input);
@@ -183,13 +188,13 @@
 
         function getCurrentSolution() {
             const cells = document.getElementsByClassName('sudoku-cell');
-            const solution = Array(4).fill().map(() => Array(4).fill(0));
+            const solution = Array(9).fill().map(() => Array(9).fill(0));
             
             console.log('Getting current solution...'); // Debug log
             
-            for (let i = 0; i < 16; i++) {
-                const row = Math.floor(i / 4);
-                const col = i % 4;
+            for (let i = 0; i < 81; i++) {
+                const row = Math.floor(i / 9);
+                const col = i % 9;
                 solution[row][col] = parseInt(cells[i].value) || 0;
             }
             
