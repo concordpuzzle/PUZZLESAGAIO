@@ -38,6 +38,9 @@
             width: 90%;
             max-width: 600px;
             margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 1px;
         }
         
         .sudoku-cell {
@@ -48,6 +51,7 @@
             border: 1px solid rgba(255,255,255,0.3);
             background: rgba(255,255,255,0.1);
             color: white;
+            padding: 0;
         }
 
         /* Style for the number input spinners */
@@ -92,11 +96,11 @@
 
         /* Add stronger borders for 3x3 boxes */
         .border-right-thick {
-            border-right: 2px solid white;
+            border-right: 2px solid white !important;
         }
 
         .border-bottom-thick {
-            border-bottom: 2px solid white;
+            border-bottom: 2px solid white !important;
         }
     </style>
 </head>
@@ -168,7 +172,14 @@
                     input.type = 'number';
                     input.min = 1;
                     input.max = 9;
-                    input.className = `sudoku-cell ${j === 2 || j === 5 ? 'border-right-thick' : ''} ${i === 2 || i === 5 ? 'border-bottom-thick' : ''}`;
+                    input.className = 'sudoku-cell';
+                    
+                    if (j === 2 || j === 5) {
+                        input.classList.add('border-right-thick');
+                    }
+                    if (i === 2 || i === 5) {
+                        input.classList.add('border-bottom-thick');
+                    }
                     
                     if (puzzle[i][j] !== 0) {
                         input.value = puzzle[i][j];
