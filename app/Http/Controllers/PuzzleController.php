@@ -85,7 +85,24 @@ class PuzzleController extends Controller
             $roundEndsAt = Cache::get('round_ends_at');
             $trivia = Cache::get('current_trivia');
             
-            if (!$roundEndsAt || !$trivia || now()->gt($roundEndsAt)) {
+            // Check if we need a new question
+            $needsNewQuestion = false;
+            
+            if (!$roundEndsAt || !$trivia) {
+                $needsNewQuestion = true;
+            } else {
+                // Convert to timestamp for reliable comparison
+                $roundEndsAtTime = $roundEndsAt->timestamp;
+                $currentTime = now()->timestamp;
+                
+                if ($currentTime > $roundEndsAtTime) {
+                    $needsNewQuestion = true;
+                }
+            }
+            
+            // Only generate new question if needed
+            if ($needsNewQuestion) {
+                Log::info('Generating new question at: ' . now());
                 $trivia = $this->generateNewTrivia();
                 $roundEndsAt = now()->addSeconds(10);
                 
