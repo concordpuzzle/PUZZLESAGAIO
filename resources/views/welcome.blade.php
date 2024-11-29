@@ -19,13 +19,13 @@
                 font-family: 'Moul', serif;
             }
             #question {
-                font-size: 2rem;
+                font-size: 1.75rem;
                 line-height: 1.2;
                 margin-bottom: 2rem;
             }
             #answers button {
                 font-family: 'Moul', serif;
-                font-size: 1.75rem;
+                font-size: 1.25rem;
                 line-height: 1.3;
                 background-color: rgba(255, 255, 255, 0.1);
                 transition: all 0.2s ease-in-out;
@@ -47,7 +47,7 @@
     </head>
     <body class="min-h-screen">
         <div class="container mx-auto px-4 py-8 max-w-4xl">
-            <h1 class="title text-center text-5xl mb-8">Trivia Time</h1>
+            <h1 class="title text-center text-xl mb-8">Puzzle Broadcast</h1>
             
             <!-- Timer and Score -->
             <div class="text-center mb-12">
