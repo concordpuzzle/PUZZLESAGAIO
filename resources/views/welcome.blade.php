@@ -1,238 +1,338 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title>Trivia Game</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Moul&family=Cabin:wght@400;500;600;700&display=swap" rel="stylesheet">
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-        <style>
-            body {
-                background-color: #b71540;
-                color: #ffffff;
-                font-family: 'Cabin', sans-serif;
-            }
-            .title {
-                font-family: 'Moul', serif;
-            }
-            #question {
-                font-size: 1.75rem;
-                line-height: 1.2;
-                margin-bottom: 2rem;
-            }
-            #answers button {
-                font-family: 'Moul', serif;
-                font-size: 1.25rem;
-                line-height: 1.3;
-                background-color: rgba(255, 255, 255, 0.1);
-                transition: all 0.2s ease-in-out;
-            }
-            #answers button:hover:not(:disabled) {
-                background-color: rgba(255, 255, 255, 0.2);
-                transform: translateY(-2px);
-            }
-            #answers button:disabled {
-                cursor: not-allowed;
-            }
-            .bg-green-500 {
-                background-color: #48bb78 !important;
-            }
-            .bg-red-500 {
-                background-color: #f56565 !important;
-            }
-        </style>
-    </head>
-    <body class="min-h-screen">
-        <div class="container mx-auto px-4 py-8 max-w-4xl">
-            <h1 class="title text-center text-xl mb-8">Puzzle Broadcast</h1>
-            
-            <!-- Timer and Score -->
-            <div class="text-center mb-12">
-                <div class="text-4xl mb-4">
-                    <span id="timer" class="font-bold">15</span>s
-                </div>
-                <div class="text-xl">
-                    Streak: <span id="streak" class="font-bold">0</span>
-                </div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Concord Puzzle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #0c2461;
+            color: #ffffff;
+            font-family: 'Cabin', sans-serif;
+        }
+        
+        .title {
+            font-family: 'Arvo', serif;
+            font-weight: 700;
+            font-size: 30px;
+            text-align: center;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-family: 'Arvo', serif;
+            font-weight: 400;
+            font-size: 18px;
+            text-align: center;
+            color: white;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+        }
+
+        .sudoku-grid {
+            width: 90%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .sudoku-cell {
+            width: 100%;
+            aspect-ratio: 1;
+            font-size: 24px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        /* Style for the number input spinners */
+        .sudoku-cell::-webkit-inner-spin-button {
+            opacity: 1;
+            background: rgba(255,255,255,0.15);  /* Slightly darker than the cell background */
+            height: 100%;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 20px;
+        }
+
+        .sudoku-cell:focus {
+            background: rgba(255,255,255,0.2);
+            outline: none;
+        }
+
+        .sudoku-cell.preset {
+            background: rgba(255,255,255,0.15);
+            font-weight: bold;
+        }
+
+        .border-right {
+            border-right: 2px solid white;
+        }
+
+        .border-bottom {
+            border-bottom: 2px solid white;
+        }
+
+        .error-message {
+            background-color: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="title">Concord Puzzle</h1>
+        <h2 class="subtitle">4x4 Sudoku</h2>
+
+        <!-- Add error message container -->
+        <div id="errorMessage" class="error-message"></div>
+
+        <!-- Timer and Score -->
+        <div class="text-center mb-8">
+            <div class="text-4xl mb-4">
+                <span id="timer" class="font-bold">10:00</span>
             </div>
-
-            <!-- Category -->
-            <div class="text-center mb-6">
-                <span id="category" class="text-lg opacity-75"></span>
-            </div>
-
-            <!-- Question -->
-            <div class="text-center mb-12">
-                <h2 id="question" class="title text-5xl font-bold mb-12 leading-tight"></h2>
-                
-                <!-- Answer Buttons -->
-                <div id="answers" class="grid grid-cols-1 gap-6 max-w-3xl mx-auto">
-                    <!-- Buttons will be inserted here -->
-                </div>
-            </div>
-
-            <!-- Feedback Message -->
-            <div id="feedback" class="text-center text-xl mt-6 hidden"></div>
-
-            <!-- Leaderboard -->
-            <div class="mt-8">
-                <table class="w-full">
-                    <thead>
-                        <tr>
-                            <th class="py-2 text-left">#</th>
-                            <th class="py-2 text-left">Player</th>
-                            <th class="py-2 text-right">Streak</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboardBody">
-                        <!-- Leaderboard rows will be inserted here -->
-                    </tbody>
-                </table>
+            <div class="text-xl">
+                Streak: <span id="streak" class="font-bold">0</span>
             </div>
         </div>
 
-        <script>
-            const playerName = localStorage.getItem('playerName') || prompt('Enter your name:');
-            localStorage.setItem('playerName', playerName);
+        <!-- Sudoku Grid -->
+        <div class="flex justify-center mb-8">
+            <div id="sudokuGrid" class="sudoku-grid grid grid-cols-4 gap-0 p-2 bg-white/10 rounded">
+                <!-- Grid will be populated by JavaScript -->
+            </div>
+        </div>
 
-            let streak = 0;
-            let currentTimeLeft = 15;
+        <!-- Submit Button -->
+        <div class="text-center mb-12">
+            <button onclick="submitSolution()" 
+                    class="bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded text-xl transition-colors">
+                Submit Solution
+            </button>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="mt-8">
+            <h2 class="text-2xl mb-4 text-center title">Leaderboard</h2>
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th class="py-2 text-left">#</th>
+                        <th class="py-2 text-left">Player</th>
+                        <th class="py-2 text-right">Streak</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <!-- Leaderboard rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const playerName = "{{ session('player_name') }}";
+        let streak = 0;
+        let currentPuzzle = null;
+        let currentTimeLeft = 600;
+
+        function createSudokuGrid(puzzle) {
+            const grid = document.getElementById('sudokuGrid');
+            grid.innerHTML = '';
             
-            // Get DOM elements
-            const timerElement = document.getElementById('timer');
-            const streakElement = document.getElementById('streak');
-            const categoryElement = document.getElementById('category');
-            const questionElement = document.getElementById('question');
-            const answersElement = document.getElementById('answers');
-            const feedbackDiv = document.getElementById('feedback');
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.min = 1;
+                    input.max = 4;
+                    input.classList.add('sudoku-cell');
+                    
+                    // Add borders for 2x2 boxes
+                    if (j === 1) input.classList.add('border-right');
+                    if (i === 1) input.classList.add('border-bottom');
+                    
+                    if (puzzle[i][j] !== 0) {
+                        input.value = puzzle[i][j];
+                        input.readOnly = true;
+                        input.classList.add('preset');
+                    }
+                    
+                    // Prevent invalid input
+                    input.addEventListener('input', function() {
+                        if (this.value > 4) this.value = 4;
+                        if (this.value < 1) this.value = '';
+                    });
 
-            // Update the initial timer display
-            timerElement.textContent = '15';
+                    grid.appendChild(input);
+                }
+            }
+        }
 
-            function updateGameState() {
-                fetch('/api/puzzle/state')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            console.error('Error:', data.error);
-                            return;
-                        }
+        function getCurrentSolution() {
+            const cells = document.getElementsByClassName('sudoku-cell');
+            const solution = Array(4).fill().map(() => Array(4).fill(0));
+            
+            console.log('Getting current solution...'); // Debug log
+            
+            for (let i = 0; i < 16; i++) {
+                const row = Math.floor(i / 4);
+                const col = i % 4;
+                solution[row][col] = parseInt(cells[i].value) || 0;
+            }
+            
+            console.log('Current solution:', solution); // Debug log
+            return solution;
+        }
 
-                        // Update timer
-                        currentTimeLeft = data.timeLeft;
-                        timerElement.textContent = currentTimeLeft;
-                        
-                        // Update question if it's new
-                        if (questionElement.textContent !== data.trivia.question) {
-                            questionElement.textContent = data.trivia.question;
-                            categoryElement.textContent = data.trivia.category;
-                            
-                            // Create answer buttons with updated styling
-                            answersElement.innerHTML = data.trivia.answers.map((answer, index) => `
-                                <button 
-                                    onclick="submitAnswer(${index})" 
-                                    class="w-full p-6 text-2xl text-left rounded transition-all duration-200 title
-                                           bg-white/10 hover:bg-white/20">
-                                    ${answer}
-                                </button>
-                            `).join('');
-                        }
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
 
-                        // Add warning color when time is low
-                        if (currentTimeLeft <= 5) {
-                            timerElement.classList.add('text-red-500');
-                        } else {
-                            timerElement.classList.remove('text-red-500');
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
+        function submitSolution() {
+            const solution = getCurrentSolution();
+            
+            // Check if puzzle is complete
+            if (solution.some(row => row.some(cell => cell === 0))) {
+                showError('Please fill in all cells!');
+                return;
             }
 
-            function submitAnswer(answerIndex) {
-                if (currentTimeLeft === 0) return;
+            fetch('/puzzle/check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    solution: solution,
+                    playerName: playerName
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Server response:', text);
+                        throw new Error('Server error');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response:', data);
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (data.correct) {
+                    streak++;
+                    showError('Correct! Well done!');
+                } else {
+                    streak = 0;
+                    showError('Sorry, that\'s not correct. Try again!');
+                }
+                
+                document.getElementById('streak').textContent = streak;
+                if (data.leaderboard) {
+                    updateLeaderboard(data.leaderboard);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Error checking solution. Please try again.');
+            });
+        }
 
-                // Disable all buttons
-                const buttons = answersElement.getElementsByTagName('button');
-                for (let button of buttons) {
-                    button.disabled = true;
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateLeaderboard(leaderboard) {
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = leaderboard.map((player, index) => `
+                <tr class="${player.name === playerName ? 'bg-white/5' : ''}">
+                    <td class="py-4 text-lg">${index + 1}</td>
+                    <td class="py-4 text-lg">
+                        ${player.name}
+                        ${player.name === playerName ? ' (You)' : ''}
+                    </td>
+                    <td class="py-4 text-lg text-right">${player.streak}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateGameState() {
+            fetch('/puzzle/state')
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Server response:', text);
+                        throw new Error('Server error');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                    return;
                 }
 
-                fetch('/api/puzzle/check', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        answer: answerIndex,
-                        playerName: playerName
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Response data:', data); // For debugging
-                    
-                    // Get the clicked button
-                    const clickedButton = buttons[answerIndex];
-                    
-                    if (data.correct) {
-                        // Correct answer - show green checkmark
-                        streak++;
-                        streakElement.textContent = streak;
-                        clickedButton.classList.add('bg-green-500', 'text-white');
-                        clickedButton.innerHTML = `${clickedButton.textContent} ✓`;
-                    } else {
-                        // Wrong answer - show red X
-                        streak = 0;
-                        streakElement.textContent = streak;
-                        clickedButton.classList.add('bg-red-500', 'text-white');
-                        clickedButton.innerHTML = `${clickedButton.textContent} ✗`;
-
-                        // Highlight the correct answer in green
-                        const correctButton = buttons[data.correct_index];
-                        correctButton.classList.add('bg-green-500', 'text-white');
-                        correctButton.innerHTML = `${correctButton.textContent} ✓`;
-                    }
-
-                    // Update leaderboard if provided
-                    if (data.leaderboard) {
-                        updateLeaderboard(data.leaderboard);
-                    }
-
-                    // Wait 1 second then move to next question
-                    setTimeout(() => {
-                        updateGameState();
-                    }, 1000);
-                })
-                .catch(error => console.error('Error:', error));
-            }
-
-            function updateLeaderboard(leaderboard) {
-                const tbody = document.getElementById('leaderboardBody');
-                if (!tbody) return;
-
-                const leaderboardData = Array.isArray(leaderboard) ? leaderboard : [];
+                // Update timer
+                currentTimeLeft = data.timeLeft;
+                document.getElementById('timer').textContent = formatTime(currentTimeLeft);
                 
-                tbody.innerHTML = leaderboardData.map((player, index) => `
-                    <tr class="${player.name === playerName ? 'bg-white/5' : ''}">
-                        <td class="py-4 text-lg">${index + 1}</td>
-                        <td class="py-4 text-lg">
-                            ${player.name}
-                            ${player.name === playerName ? ' (You)' : ''}
-                        </td>
-                        <td class="py-4 text-lg text-right">${player.streak}</td>
-                    </tr>
-                `).join('');
-            }
+                // Update puzzle if it's new
+                if (!currentPuzzle || JSON.stringify(currentPuzzle) !== JSON.stringify(data.puzzle)) {
+                    currentPuzzle = data.puzzle;
+                    createSudokuGrid(data.puzzle);
+                }
 
-            // Initial update
-            updateGameState();
+                // Update leaderboard
+                if (data.leaderboard) {
+                    updateLeaderboard(data.leaderboard);
+                }
 
-            // Update every second
-            setInterval(updateGameState, 1000);
-        </script>
-    </body>
+                // Warning color when time is low
+                if (currentTimeLeft <= 60) {
+                    document.getElementById('timer').classList.add('text-red-500');
+                } else {
+                    document.getElementById('timer').classList.remove('text-red-500');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Initial load
+        updateGameState();
+
+        // Update every second
+        setInterval(updateGameState, 1000);
+    </script>
+</body>
 </html>

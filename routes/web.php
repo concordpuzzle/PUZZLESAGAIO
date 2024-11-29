@@ -1,28 +1,24 @@
 <?php
 
+use Illuminate\Http\Request;
+use App\Http\Controllers\PuzzleController;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
-
 Route::get('/', function () {
-    return view('welcome');
+    if (session()->has('player_name')) {
+        return view('welcome');
+    }
+    return view('auth.login');
 });
 
-Route::middleware([
-    'auth:sanctum',
-    config('jetstream.auth_session'),
-    'verified',
-])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-});
+Route::post('/guest-login', function (Request $request) {
+    $request->validate([
+        'name' => 'required|string|max:255'
+    ]);
+    
+    session(['player_name' => $request->name]);
+    return redirect('/');
+})->name('guest.login');
+
+Route::post('/puzzle/check', [PuzzleController::class, 'checkSolution']);
+Route::get('/puzzle/state', [PuzzleController::class, 'getGameState']);

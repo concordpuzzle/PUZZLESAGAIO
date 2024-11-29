@@ -3,128 +3,132 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use OpenAI\Laravel\Facades\OpenAI;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use App\Models\ActivePlayer;
-use Cache;
-use Log;
+use OpenAI\Laravel\Facades\OpenAI;
 
 class PuzzleController extends Controller
 {
-    private function generateNewTrivia()
+    private function generateNewPuzzle()
     {
-        Log::info('Generating new trivia question from OpenAI');
+        Log::info('Generating new 4x4 Sudoku puzzle');
         
         $result = OpenAI::chat()->create([
             'model' => 'gpt-3.5-turbo',
             'messages' => [
                 [
                     'role' => 'system',
-                    'content' => 'You are an expert trivia question generator. Generate short,challenging questions from a wide variety of subjects including:
-                    - Advanced Science (quantum physics, biochemistry, astronomy)
-                    - World History (ancient civilizations, revolutions, obscure events)
-                    - Art & Architecture (movements, techniques, famous works)
-                    - Literature & Philosophy (classic works, authors, philosophical concepts)
-                    - Technology & Computing (programming, AI, innovations)
-                    - Geography & Geology (lesser-known locations, geological phenomena)
-                    - Music Theory & History (classical, jazz, world music)
-                    - Mathematics & Logic (theorems, famous problems)
-                    - Sports & Olympics (records, historic moments, rules)
-                    - Cinema & Television (directors, techniques, cult classics)
-                    - Biology & Medicine (rare diseases, scientific discoveries)
-                    - Chemistry & Materials (compounds, reactions, properties)
-                    - Space Exploration (missions, discoveries, technology)
-                    - Economics & Finance (concepts, history, terminology)
-                    - Language & Linguistics (etymology, grammar, foreign phrases)
-                    - Mythology & Religion (world religions, ancient myths)
-                    - Politics & Law (systems, landmark cases, international relations)
-                    - Environmental Science (ecosystems, climate, conservation)
-                    - Psychology & Neuroscience (theories, studies, brain function)
-                    - Food & Cuisine (techniques, world cuisine, ingredients)
-
-                    Make questions challenging but not impossible. Target knowledgeable adults.
-                    Questions should require critical thinking and specific knowledge.
-                    Avoid obvious or common knowledge questions.'
+                    'content' => 'You are a 4x4 Sudoku puzzle generator. Generate puzzles where:
+                    - Each row must contain digits 1-4
+                    - Each column must contain digits 1-4
+                    - Each 2x2 box must contain digits 1-4
+                    - Puzzle must have a unique solution
+                    - Include at least one starting number in each 2x2 box
+                    - Include 8-10 starting numbers total
+                    - Ensure the puzzle is solvable with basic Sudoku strategies'
                 ],
                 [
                     'role' => 'user',
-                    'content' => 'Generate a challenging trivia question. Respond ONLY with JSON in this format: 
+                    'content' => 'Generate a 4x4 Sudoku puzzle. Respond ONLY with JSON in this format: 
                     {
-                        "question": "What is the question?",
-                        "answers": ["correct answer", "wrong answer 1", "wrong answer 2", "wrong answer 3"],
-                        "correct_index": 0,
-                        "category": "category name"
-                    }'
+                        "puzzle": [
+                            [1,0,4,0],
+                            [0,3,0,2],
+                            [2,0,3,0],
+                            [0,1,0,4]
+                        ],
+                        "solution": [
+                            [1,2,4,3],
+                            [4,3,1,2],
+                            [2,4,3,1],
+                            [3,1,2,4]
+                        ]
+                    }
+                    Use 0 for empty cells in the puzzle. Ensure each 2x2 box has at least one starting number.'
                 ]
             ],
-            'temperature' => 1.0,  // Maximum randomness
-            'presence_penalty' => 1.0,  // Maximum penalty for repeated content
-            'frequency_penalty' => 1.0  // Maximum penalty for repeated content
+            'temperature' => 0.7,
+            'max_tokens' => 1000
         ]);
 
-        $content = $result->choices[0]->message->content;
-        $data = json_decode($content, true);
-        
-        Log::info('Received question from OpenAI:', ['question' => $data['question']]);
-
-        // Shuffle answers but remember the correct one
-        $correctAnswer = $data['answers'][$data['correct_index']];
-        shuffle($data['answers']);
-        $newCorrectIndex = array_search($correctAnswer, $data['answers']);
-
-        return [
-            'question' => $data['question'],
-            'answers' => $data['answers'],
-            'correct_index' => $newCorrectIndex,
-            'category' => $data['category']
-        ];
+        try {
+            Log::info('OpenAI response:', ['response' => $result]);
+            $content = $result->choices[0]->message->content;
+            $data = json_decode($content, true);
+            
+            if (!$data || !isset($data['puzzle']) || !isset($data['solution'])) {
+                Log::error('Invalid puzzle format from OpenAI:', ['content' => $content]);
+                throw new \Exception('Invalid puzzle format received');
+            }
+            
+            // Validate that each 2x2 box has at least one number
+            $boxes = [
+                [0,0], [0,2],
+                [2,0], [2,2]
+            ];
+            
+            foreach ($boxes as $box) {
+                $hasNumber = false;
+                for ($i = 0; $i < 2; $i++) {
+                    for ($j = 0; $j < 2; $j++) {
+                        if ($data['puzzle'][$box[0] + $i][$box[1] + $j] !== 0) {
+                            $hasNumber = true;
+                            break 2;
+                        }
+                    }
+                }
+                if (!$hasNumber) {
+                    Log::error('Invalid puzzle: missing number in 2x2 box', ['box' => $box]);
+                    throw new \Exception('Invalid puzzle: missing number in 2x2 box');
+                }
+            }
+            
+            // Count total starting numbers
+            $startingNumbers = 0;
+            for ($i = 0; $i < 4; $i++) {
+                for ($j = 0; $j < 4; $j++) {
+                    if ($data['puzzle'][$i][$j] !== 0) {
+                        $startingNumbers++;
+                    }
+                }
+            }
+            
+            if ($startingNumbers < 8) {
+                Log::error('Invalid puzzle: not enough starting numbers', ['count' => $startingNumbers]);
+                throw new \Exception('Invalid puzzle: not enough starting numbers');
+            }
+            
+            return $data;
+        } catch (\Exception $e) {
+            Log::error('Error processing OpenAI response:', ['error' => $e->getMessage()]);
+            throw $e;
+        }
     }
 
     public function getGameState()
     {
         try {
             $roundEndsAt = Cache::get('round_ends_at');
-            $trivia = Cache::get('current_trivia');
+            $puzzle = Cache::get('current_puzzle');
             
-            // Check if we need a new question
-            $needsNewQuestion = false;
-            
-            if (!$roundEndsAt || !$trivia) {
-                $needsNewQuestion = true;
-            } else {
-                // Convert to timestamp for reliable comparison
-                $roundEndsAtTime = $roundEndsAt->timestamp;
-                $currentTime = now()->timestamp;
+            if (!$roundEndsAt || !$puzzle || now()->gt($roundEndsAt)) {
+                $puzzle = $this->generateNewPuzzle();
+                $roundEndsAt = now()->addMinutes(10);
                 
-                if ($currentTime > $roundEndsAtTime) {
-                    $needsNewQuestion = true;
-                }
-            }
-            
-            // Only generate new question if needed
-            if ($needsNewQuestion) {
-                Log::info('Generating new question at: ' . now());
-                $trivia = $this->generateNewTrivia();
-                $roundEndsAt = now()->addSeconds(10);
-                
-                Cache::put('current_trivia', $trivia, $roundEndsAt);
+                Cache::put('current_puzzle', $puzzle, $roundEndsAt);
                 Cache::put('round_ends_at', $roundEndsAt, $roundEndsAt);
             }
 
             $timeLeft = max(0, now()->diffInSeconds($roundEndsAt));
             
-            // Get current leaderboard
             $leaderboard = ActivePlayer::where('streak', '>', 0)
                 ->orderByDesc('streak')
                 ->take(10)
                 ->get(['name', 'streak']);
 
             return response()->json([
-                'trivia' => [
-                    'question' => $trivia['question'],
-                    'answers' => $trivia['answers'],
-                    'category' => $trivia['category'],
-                    'correct_index' => $timeLeft === 0 ? $trivia['correct_index'] : null
-                ],
+                'puzzle' => $puzzle['puzzle'],
                 'timeLeft' => $timeLeft,
                 'leaderboard' => $leaderboard
             ]);
@@ -135,19 +139,49 @@ class PuzzleController extends Controller
         }
     }
 
-    public function checkAnswer(Request $request)
+    public function checkSolution(Request $request)
     {
         try {
-            $trivia = Cache::get('current_trivia');
-            if (!$trivia) {
-                throw new \Exception('No active trivia found');
+            Log::info('Received solution check request', [
+                'request_data' => $request->all()
+            ]);
+
+            $puzzle = Cache::get('current_puzzle');
+            if (!$puzzle) {
+                Log::error('No puzzle found in cache');
+                throw new \Exception('No active puzzle found');
             }
 
-            $submittedAnswer = (int) $request->answer;
-            $correctAnswer = (int) $trivia['correct_index'];
-            $playerName = $request->playerName;
+            Log::info('Current puzzle from cache', [
+                'puzzle' => $puzzle
+            ]);
+
+            $submittedSolution = $request->solution;
             
-            $correct = $submittedAnswer === $correctAnswer;
+            if (!is_array($submittedSolution)) {
+                Log::error('Invalid solution format', [
+                    'submitted' => $submittedSolution
+                ]);
+                throw new \Exception('Invalid solution format');
+            }
+            
+            // Debug logging
+            Log::info('Comparing solutions:', [
+                'submitted' => $submittedSolution,
+                'correct' => $puzzle['solution']
+            ]);
+            
+            // Compare solutions
+            $correct = $this->compareSolutions($submittedSolution, $puzzle['solution']);
+
+            Log::info('Solution comparison result:', [
+                'correct' => $correct
+            ]);
+
+            $playerName = $request->playerName;
+            if (!$playerName) {
+                throw new \Exception('Player name is required');
+            }
 
             // Update player streak
             $player = ActivePlayer::firstOrCreate(
@@ -157,8 +191,15 @@ class PuzzleController extends Controller
 
             if ($correct) {
                 $player->increment('streak');
+                Log::info('Player streak incremented', [
+                    'player' => $playerName,
+                    'new_streak' => $player->streak
+                ]);
             } else {
                 $player->update(['streak' => 0]);
+                Log::info('Player streak reset', [
+                    'player' => $playerName
+                ]);
             }
 
             // Get updated leaderboard
@@ -169,14 +210,46 @@ class PuzzleController extends Controller
 
             return response()->json([
                 'correct' => $correct,
-                'correct_index' => $trivia['correct_index'],
-                'correct_answer' => $trivia['answers'][$trivia['correct_index']],
                 'leaderboard' => $leaderboard
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error checking answer: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error checking solution: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'error' => $e->getMessage(),
+                'details' => 'Check server logs for more information'
+            ], 500);
         }
+    }
+
+    private function compareSolutions($submitted, $correct)
+    {
+        Log::info('Comparing solutions in detail:', [
+            'submitted' => $submitted,
+            'correct' => $correct
+        ]);
+
+        if (!is_array($submitted) || !is_array($correct)) {
+            Log::error('Invalid array format in comparison');
+            return false;
+        }
+
+        for ($i = 0; $i < 4; $i++) {
+            for ($j = 0; $j < 4; $j++) {
+                if (!isset($submitted[$i][$j]) || !isset($correct[$i][$j])) {
+                    Log::error("Missing value at position [$i][$j]");
+                    return false;
+                }
+                if ($submitted[$i][$j] != $correct[$i][$j]) {
+                    Log::info("Mismatch at position [$i][$j]: submitted={$submitted[$i][$j]}, correct={$correct[$i][$j]}");
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 }

@@ -1,48 +1,83 @@
-<x-guest-layout>
-    <x-authentication-card>
-        <x-slot name="logo">
-            <x-authentication-card-logo />
-        </x-slot>
-
-        <x-validation-errors class="mb-4" />
-
-        @if (session('status'))
-            <div class="mb-4 font-medium text-sm text-green-600 dark:text-green-400">
-                {{ session('status') }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Concord Puzzle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #0c2461;
+            color: #ffffff;
+            font-family: 'Cabin', sans-serif;
+        }
+        
+        .title {
+            font-family: 'Arvo', serif;
+            font-weight: 700;
+            font-size: 30px;
+            text-align: center;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+        
+        .subtitle {
+            font-family: 'Arvo', serif;
+            font-weight: 400;
+            font-size: 18px;
+            text-align: center;
+            color: white;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+        }
+        
+        .error-message {
+            background-color: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-md p-8">
+        <h1 class="title mb-8">Concord Puzzle</h1>
+        <h2 class="subtitle">4x4 Sudoku</h2>
+        
+        @if ($errors->any())
+            <div class="error-message" style="display: block">
+                {{ $errors->first() }}
             </div>
         @endif
+        
+        <div class="bg-white/10 rounded-lg p-8">
+            <form action="{{ route('guest.login') }}" method="POST" class="space-y-6">
+                @csrf
+                
+                <div>
+                    <label for="name" class="block text-sm font-medium mb-2">Enter Your Name</label>
+                    <input type="text" 
+                           name="name" 
+                           id="name" 
+                           required 
+                           class="w-full px-4 py-2 rounded bg-white/5 border border-white/20 focus:border-white/40 focus:outline-none text-white"
+                           placeholder="Guest Name">
+                </div>
 
-        <form method="POST" action="{{ route('login') }}">
-            @csrf
-
-            <div>
-                <x-label for="email" value="{{ __('Email') }}" />
-                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            </div>
-
-            <div class="mt-4">
-                <x-label for="password" value="{{ __('Password') }}" />
-                <x-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="current-password" />
-            </div>
-
-            <div class="block mt-4">
-                <label for="remember_me" class="flex items-center">
-                    <x-checkbox id="remember_me" name="remember" />
-                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
-                </label>
-            </div>
-
-            <div class="flex items-center justify-end mt-4">
-                @if (Route::has('password.request'))
-                    <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('password.request') }}">
-                        {{ __('Forgot your password?') }}
-                    </a>
-                @endif
-
-                <x-button class="ms-4">
-                    {{ __('Log in') }}
-                </x-button>
-            </div>
-        </form>
-    </x-authentication-card>
-</x-guest-layout>
+                <div>
+                    <button type="submit" 
+                            class="w-full py-2 px-4 bg-white/20 hover:bg-white/30 rounded transition-colors font-medium">
+                        Play as Guest
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
